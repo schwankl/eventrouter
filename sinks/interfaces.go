@@ -36,6 +36,23 @@ func ManufactureSink() (e EventSinkInterface) {
 	s := viper.GetString("sink")
 	glog.Infof("Sink is [%v]", s)
 	switch s {
+	case "slack":
+		url := viper.GetString("slackSinkUrl")
+		if url == "" {
+			panic("slack sink specified but no slackSinkUrl")
+		}
+
+		// By default we buffer up to 1500 events, and drop messages if more than
+		// 1500 have come in without getting consumed
+		viper.SetDefault("slackSinkBufferSize", 1500)
+		viper.SetDefault("slackSinkDiscardMessages", true)
+
+		bufferSize := viper.GetInt("slackSinkBufferSize")
+		overflow := viper.GetBool("slackSinkDiscardMessages")
+
+		h := NewSlackSink(url, overflow, bufferSize)
+		go h.Run(make(chan bool))
+		return h
 	case "glog":
 		e = NewGlogSink()
 	case "stdout":
